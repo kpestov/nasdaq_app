@@ -6,7 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 from pprint import pprint
 from datetime import datetime
-import json
 
 
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/')))
@@ -31,7 +30,7 @@ def get_companies():
 def html_generator(companies_list):
     for company in companies_list:
         historical_url = 'https://www.nasdaq.com/symbol/{}/historical'.format(company.lower())
-        yield requests.get(historical_url).text, company
+        yield requests.get(historical_url).text
 
 
 # def get_html(url):
@@ -69,12 +68,11 @@ def historical_parser(html):
 
 def main():
     companies_list = get_companies()
-    for page_and_company in html_generator(companies_list):
-        company = Company.objects.create(ticker=page_and_company[1])
+    for page in html_generator(companies_list):
+        company = Company.objects.create(ticker=page.split('/')[4])
         print(company)
-        for data in historical_parser(page_and_company[0]):
+        for data in historical_parser(page):
             Historical.objects.create(ticker=company, **data)
-
 
 
 if __name__ == '__main__':
