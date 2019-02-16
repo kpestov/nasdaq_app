@@ -44,4 +44,3 @@ class InsiderTrades(models.Model):
 
 
 
-
