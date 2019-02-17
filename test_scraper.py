@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import os
 import sys
+import time
+
 import django
 import requests
 from bs4 import BeautifulSoup
@@ -40,21 +42,32 @@ def insider_url_generator(companies_list):
     for company in companies_list:
 
         historical_url = base_url + '{}/insider-trades'.format(company.lower())
-        html = requests.get(historical_url).text
+        r = requests.get(historical_url)
+        time.sleep(0.5)
+
+        if r.status_code != 200:
+            print('The server is not responding!')
+
+        html = r.text
         soup = BeautifulSoup(html, 'lxml')
 
-        pages = soup.find('ul', class_='pager').find_all('a', class_='pagerlink')[-1].get('href')
-        total_pages = pages.split('=')[1]
+        try:
+            pages = soup.find('ul', class_='pager').find_all('a', class_='pagerlink')[-1].get('href')
+            total_pages = pages.split('=')[1]
 
-        if int(total_pages) < 10:
-            page_quantity = int(total_pages)
-        else:
-            page_quantity = 10
+            if int(total_pages) < 10:
+                page_quantity = int(total_pages)
+            else:
+                page_quantity = 10
 
-        for page in range(1, page_quantity + 1):
-            insider_url = base_url + '{}/insider-trades?page={}'.format(company.lower(), page)
+            for page in range(1, page_quantity + 1):
+                insider_url = base_url + '{}/insider-trades?page={}'.format(company.lower(), page)
 
-            yield insider_url
+                yield insider_url
+                print('{} is in parsing process'.format(company.lower()))
+        except:
+            print('There is no <ul> tag with class=pager')
+            break
 
 
 def convert_data(data):
@@ -69,47 +82,54 @@ def convert_data(data):
 def historical_parser(html):
     soup = BeautifulSoup(html, 'lxml')
 
-    table_lines = soup.find('div', class_='genTable').find_all('tr')[2:]
+    try:
+        table_lines = soup.find('div', class_='genTable').find_all('tr')[2:]
 
-    for line in table_lines:
+        for line in table_lines:
+            historical_data = dict(
+                date=convert_data(line.find_all('td')[0].get_text().strip()),
+                open=float(line.find_all('td')[1].get_text().replace(',', '')),
+                high=float(line.find_all('td')[2].get_text().replace(',', '')),
+                low=float(line.find_all('td')[3].get_text().replace(',', '')),
+                close=float(line.find_all('td')[4].get_text().replace(',', '')),
+                volume=float(line.find_all('td')[5].get_text().replace(',', '')),
+            )
 
-        historical_data = dict(
-            date=convert_data(line.find_all('td')[0].get_text().strip()),
-            open=float(line.find_all('td')[1].get_text().replace(',', '')),
-            high=float(line.find_all('td')[2].get_text().replace(',', '')),
-            low=float(line.find_all('td')[3].get_text().replace(',', '')),
-            close=float(line.find_all('td')[4].get_text().replace(',', '')),
-            volume=float(line.find_all('td')[5].get_text().replace(',', '')),
-        )
-
-        yield historical_data
+            yield historical_data
+            print('-')
+    except:
+        print('There is no <div> tag with class=genTable')
 
 
 def insider_parser(html):
     soup = BeautifulSoup(html, 'lxml')
 
-    table_lines = soup.find('table', class_='certain-width').find_all('tr')[1:]
+    try:
+        table_lines = soup.find('table', class_='certain-width').find_all('tr')[1:]
 
-    for line in table_lines:
-        last_price_value = line.find_all('td')[6].get_text()
+        for line in table_lines:
+            last_price_value = line.find_all('td')[6].get_text()
 
-        if not last_price_value:
-            last_price_value = None
-        else:
-            last_price_value = float(last_price_value.replace(',', ''))
+            if not last_price_value:
+                last_price_value = None
+            else:
+                last_price_value = float(last_price_value.replace(',', ''))
 
-        insider_data = dict(
-            insider=line.find_all('td')[0].get_text(),
-            relation=line.find_all('td')[1].get_text(),
-            last_date=convert_data(line.find_all('td')[2].get_text()),
-            transaction_type=line.find_all('td')[3].get_text(),
-            owner_type=line.find_all('td')[4].get_text(),
-            shares_traded=float(line.find_all('td')[5].get_text().replace(',', '')),
-            last_price=last_price_value,
-            shares_held=float(line.find_all('td')[7].get_text().replace(',', '')),
-        )
+            insider_data = dict(
+                insider=line.find_all('td')[0].get_text(),
+                relation=line.find_all('td')[1].get_text(),
+                last_date=convert_data(line.find_all('td')[2].get_text()),
+                transaction_type=line.find_all('td')[3].get_text(),
+                owner_type=line.find_all('td')[4].get_text(),
+                shares_traded=float(line.find_all('td')[5].get_text().replace(',', '')),
+                last_price=last_price_value,
+                shares_held=float(line.find_all('td')[7].get_text().replace(',', '')),
+            )
 
-        yield insider_data
+            yield insider_data
+            print('-')
+    except:
+        print('There is no <table> tag with class=certain-width')
 
 
 def company_in_db(company):
@@ -135,6 +155,8 @@ def write_historical_data(historical_urls):
     company_name = historical_urls.split('/')[4]
     company_id = company_in_db(company_name)
     historical_html = requests.get(historical_urls).text
+    print('{} is in parsing process'.format(company_name))
+    time.sleep(0.5)
 
     for historical_data in historical_parser(historical_html):
         Historical.objects.create(ticker_id=company_id, **historical_data)
@@ -145,6 +167,8 @@ def write_insider_data(insider_urls):
     company_name = insider_urls.split('/')[4]
     company_id = company_in_db(company_name)
     insider_html = requests.get(insider_urls).text
+    print('{} is in parsing process'.format(company_name))
+    time.sleep(0.5)
 
     for insider_data in insider_parser(insider_html):
         insider_id = insider_in_db(insider_data)
@@ -162,25 +186,32 @@ def write_insider_data(insider_urls):
 
 def make_all():
 
+    print('Enter the number of threads:')
+    num_threads = int(input())
+    print('\n')
+
     companies_list = get_companies()
     historical_urls = historical_url_generator(companies_list)
     insider_urls = insider_url_generator(companies_list)
 
-    with Pool(10) as p:
+    with Pool(num_threads) as p:
         p.map(write_historical_data, historical_urls)
         p.map(write_insider_data, insider_urls)
 
 
+def time_logger(func):
+    def wrapper():
+        start = datetime.now()
+        func()
+        end = datetime.now()
+        estimated_time = end - start
+        print('Parsing is done in {}'.format(estimated_time))
+    return wrapper
+
+
+@time_logger
 def main():
-    start = datetime.now()
-
     make_all()
-
-    end = datetime.now()
-
-    estimated_time = end - start
-
-    print(estimated_time)
 
 
 if __name__ == '__main__':
