@@ -4,9 +4,9 @@ import sys
 import django
 import requests
 from bs4 import BeautifulSoup
-from pprint import pprint
 from datetime import datetime
 
+from multiprocessing import Pool
 
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/')))
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/nasdaqengine/')))
@@ -18,34 +18,43 @@ from django.core.exceptions import ObjectDoesNotExist
 from nasdaqstat.models import *
 
 
-url = 'https://www.nasdaq.com/symbol/goog/historical'
-
-
 def get_companies():
     with open('tickers.txt') as f:
         companies_list = [company.rstrip().lower() for company in f]
         return companies_list
 
 
-def url_generator(companies_list):
+def historical_url_generator(companies_list):
+
     base_url = 'https://www.nasdaq.com/symbol/'
+
     for company in companies_list:
         historical_url = base_url + '{}/historical'.format(company.lower())
-        insider_url = base_url + '{}/insider-trades'.format(company.lower())
-
-        yield historical_url, insider_url
+        yield historical_url
 
 
-# def insider_url_generator(companies_list):
-#     for company in companies_list:
-#         insider_url = 'https://www.nasdaq.com/symbol/{}/insider-trades'.format(company.lower())
-#         # insider_html = requests.get(insider_url).text
-#         yield insider_url
+def insider_url_generator(companies_list):
 
+    base_url = 'https://www.nasdaq.com/symbol/'
 
-# def get_html(url):
-#     response = requests.get(url)
-#     return response.text
+    for company in companies_list:
+
+        historical_url = base_url + '{}/insider-trades'.format(company.lower())
+        html = requests.get(historical_url).text
+        soup = BeautifulSoup(html, 'lxml')
+
+        pages = soup.find('ul', class_='pager').find_all('a', class_='pagerlink')[-1].get('href')
+        total_pages = pages.split('=')[1]
+
+        if int(total_pages) < 10:
+            page_quantity = int(total_pages)
+        else:
+            page_quantity = 10
+
+        for page in range(1, page_quantity + 1):
+            insider_url = base_url + '{}/insider-trades?page={}'.format(company.lower(), page)
+
+            yield insider_url
 
 
 def convert_data(data):
@@ -103,64 +112,76 @@ def insider_parser(html):
         yield insider_data
 
 
-def write_historical_data():
+def company_in_db(company):
+    if Company.objects.filter(ticker=company).exists():
+        exist_company = Company.objects.get(ticker=company)
+        return exist_company.id
+    else:
+        new_company = Company(ticker=company)
+        new_company.save()
+        return new_company.id
+
+
+def insider_in_db(insider_data):
+    if Insider.objects.filter(name=insider_data['insider']).exists():
+        exist_insider = Insider.objects.get(name=insider_data['insider'])
+        return exist_insider.id
+    else:
+        new_insider = Insider.objects.create(name=insider_data['insider'], relation=insider_data['relation'])
+        return new_insider.id
+
+
+def write_historical_data(historical_urls):
+    company_name = historical_urls.split('/')[4]
+    company_id = company_in_db(company_name)
+    historical_html = requests.get(historical_urls).text
+
+    for historical_data in historical_parser(historical_html):
+        Historical.objects.create(ticker_id=company_id, **historical_data)
+
+
+def write_insider_data(insider_urls):
+
+    company_name = insider_urls.split('/')[4]
+    company_id = company_in_db(company_name)
+    insider_html = requests.get(insider_urls).text
+
+    for insider_data in insider_parser(insider_html):
+        insider_id = insider_in_db(insider_data)
+        InsiderTrades.objects.create(
+            ticker_id=company_id,
+            insider_id=insider_id,
+            last_date=insider_data['last_date'],
+            transaction_type=insider_data['transaction_type'],
+            owner_type=insider_data['owner_type'],
+            shares_traded=insider_data['shares_traded'],
+            last_price=insider_data['last_price'],
+            shares_held=insider_data['shares_held']
+        )
+
+
+def make_all():
+
     companies_list = get_companies()
-    for url in url_generator(companies_list):
-        historical_url = url[0]
-        company = Company.objects.create(ticker=historical_url.split('/')[4])
-        historical_html = requests.get(historical_url).text
-        for data in historical_parser(historical_html):
-            Historical.objects.create(ticker=company, **data)
+    historical_urls = historical_url_generator(companies_list)
+    insider_urls = insider_url_generator(companies_list)
+
+    with Pool(10) as p:
+        p.map(write_historical_data, historical_urls)
+        p.map(write_insider_data, insider_urls)
 
 
-def write_insider_data():
-    companies_list = get_companies()
-    for url in url_generator(companies_list):
-        insider_url = url[1]
-        company = Company.objects.create(ticker=insider_url.split('/')[4])
-        insider_html = requests.get(insider_url).text
-        for data in insider_parser(insider_html):
-            insider = Insider.objects.create(name=data['insider'], relation=data['relation'])
-            InsiderTrades.objects.create(
-                ticker=company,
-                insider=insider,
-                last_date=data['last_date'],
-                transaction_type=data['transaction_type'],
-                owner_type=data['owner_type'],
-                shares_traded=data['shares_traded'],
-                last_price=data['last_price'],
-                shares_held=data['shares_held']
-            )
+def main():
+    start = datetime.now()
 
+    make_all()
 
-def write_data():
-    companies_list = get_companies()
-    for url in url_generator(companies_list):
-        historical_url = url[0]
-        insider_url = url[1]
-        company_name = Company.objects.create(ticker=historical_url.split('/')[4])
-        historical_html = requests.get(historical_url).text
-        insider_html = requests.get(insider_url).text
+    end = datetime.now()
 
-        for historical_data in historical_parser(historical_html):
-            Historical.objects.create(ticker=company_name, **historical_data)
+    estimated_time = end - start
 
-        for insider_data in insider_parser(insider_html):
-            insider = Insider.objects.create(name=insider_data['insider'], relation=insider_data['relation'])
-            InsiderTrades.objects.create(
-                ticker=company_name,
-                insider=insider,
-                last_date=insider_data['last_date'],
-                transaction_type=insider_data['transaction_type'],
-                owner_type=insider_data['owner_type'],
-                shares_traded=insider_data['shares_traded'],
-                last_price=insider_data['last_price'],
-                shares_held=insider_data['shares_held']
-            )
+    print(estimated_time)
 
 
 if __name__ == '__main__':
-    write_data()
-    # write_historical_data()
-    # write_insider_data()
-
+    main()
