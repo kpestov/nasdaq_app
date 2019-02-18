@@ -2,22 +2,19 @@
 import os
 import sys
 import time
-
 import django
 import requests
+
 from bs4 import BeautifulSoup
 from datetime import datetime
-
 from multiprocessing import Pool
+from nasdaqstat.models import *
 
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/')))
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/nasdaqengine/')))
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 django.setup()
-
-from django.core.exceptions import ObjectDoesNotExist
-from nasdaqstat.models import *
 
 
 def get_companies():
@@ -212,6 +209,21 @@ def time_logger(func):
 @time_logger
 def main():
     make_all()
+
+    num_companies = Company.objects.count()
+    num_insiders = Insider.objects.count()
+    num_historicals = Historical.objects.count()
+    num_insidertrades = InsiderTrades.objects.count()
+
+    print('\n{} records were created in the table "Company"\n'
+          '\n{} records were created in the table "Insider"\n'
+          '\n{} records were created in the table "HIstorical"\n'
+          '\n{} records were created in the table "Insider Trades"\n'.format(
+                                                                             num_companies,
+                                                                             num_insiders,
+                                                                             num_historicals,
+                                                                             num_insidertrades
+                                                                             ))
 
 
 if __name__ == '__main__':
