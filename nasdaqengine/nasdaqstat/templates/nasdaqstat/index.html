@@ -1,0 +1,20 @@
+{% extends 'nasdaqstat/base_nasdaqstat.html' %}
+{% block title %}
+  Nasdaq Engine
+{% endblock%}
+{% block content %}
+  <div style="margin-left: 15px;">
+    <h2>All Stock</h2>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <div class="list-group">
+        {% for ticker in tickers %}
+          <a href="{{ ticker.get_absolute_url }}" class="list-group-item list-group-item-action">
+            {{ ticker }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

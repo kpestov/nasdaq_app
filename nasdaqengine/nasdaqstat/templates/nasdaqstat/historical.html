@@ -1,0 +1,42 @@
+{% extends 'nasdaqstat/base_nasdaqstat.html' %}
+{% block title %}
+  {{ ticker }} - {{ block.super }}
+{% endblock%}
+{% block content %}
+  <div>
+    <h2>{{ ticker }}</h2>
+  </div>
+  <div class="row">
+    <div class="">
+      <table class="table table-hover">
+        <thead class="thead-light">
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Open</th>
+            <th scope="col">High</th>
+            <th scope="col">Low</th>
+            <th scope="col">Close / Last</th>
+            <th scope="col">Volume</th>
+          </tr>
+        </thead>
+        <tbody>
+
+        {% for row in ticker_historical %}
+
+          <tr>
+            <td>{{ row.date }}</td>
+            <td>{{ row.open }}</td>
+            <td>{{ row.high }}</td>
+            <td>{{ row.low }}</td>
+            <td>{{ row.close }}</td>
+            <td>{{ row.volume }}</td>
+          </tr>
+
+        {% endfor %}
+
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+{% endblock %}

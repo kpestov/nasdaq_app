@@ -1,4 +1,5 @@
 from django.db import models
+from django.shortcuts import reverse
 
 
 class Historical(models.Model):
@@ -16,6 +17,9 @@ class Historical(models.Model):
 
 class Company(models.Model):
     ticker = models.CharField(max_length=40)
+
+    def get_absolute_url(self):
+        return reverse('ticker_historical_url', kwargs={'ticker': self.ticker})
 
     def __str__(self):
         return self.ticker
