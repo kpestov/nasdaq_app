@@ -1,0 +1,51 @@
+{% extends 'nasdaqstat/base_nasdaqstat.html' %}
+{% block title %}
+  Insider Trades of {{ insider_name }} - {{ block.super }}
+{% endblock%}
+{% block content %}
+
+  <div class="row">
+    <div class="col-7 ml-3">
+      <div class="d-flex justify-content-between">
+
+        <div class="p-2" style="margin-left: -200px;">
+          <div>
+            <h2>Insider Trades of {{ insider_name }}</h2>
+          </div>
+        </div>
+
+      </div>
+      <div style="margin-left: -200px;">
+        <table class="table table-hover">
+          <thead class="thead-light">
+            <tr>
+              <th scope="col">Company</th>
+              <th scope="col">Relation</th>
+              <th scope="col">Last Date</th>
+              <th scope="col">Tran</th>
+              <th scope="col">Owner Type</th>
+              <th scope="col">Shares Traded</th>
+              <th scope="col">Last Price</th>
+              <th scope="col">Shares Held</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in insider_operations %}
+              <tr>
+                <td>{{ row.ticker }}</td>
+                <td>{{ row.insider.relation }}</td>
+                <td>{{ row.last_date }}</td>
+                <td>{{ row.transaction_type }}</td>
+                <td>{{ row.owner_type }}</td>
+                <td>{{ row.shares_traded }}</td>
+                <td>{{ row.last_price }}</td>
+                <td>{{ row.shares_held }}</td>
+
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
