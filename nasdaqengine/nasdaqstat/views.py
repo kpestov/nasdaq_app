@@ -111,7 +111,7 @@ class Delta(View):
                      " ORDER BY t1.date ) select1 "
                      " GROUP BY date2 "
                      " UNION "
-                     " SELECT MAX( select2.date ), date2{down}FROM ( "
+                     " SELECT MAX( select2.date ), date2{down} FROM ( "
                      " SELECT t1.date, t1.{type}, "
                      " MIN(t2.date) as date2 "
                      " FROM nasdaqstat_historical t1 "
@@ -128,7 +128,7 @@ class Delta(View):
                                                 type=delta_query['type'],
                                                 up=", 'UP' direction",
                                                 down=", 'DOWN' as direction")
-                 )
+                     )
 
             cursor = connection.cursor()
             cursor.execute(query)

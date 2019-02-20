@@ -12,3 +12,4 @@ urlpatterns = [
 
 
 # http://127.0.0.1:8000/goog/analytics?date_from=2019-02-15&date_to=2019-02-14
+# http://127.0.0.1:8000/goog/delta?value=11&type=(open/high/low/close)
