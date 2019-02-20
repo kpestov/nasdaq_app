@@ -6,7 +6,7 @@
 
   <div class="row">
     <div class="col-5 ml-3">
-      <div class="d-flex justify-content-between">
+      <div class="d-flex">
 
         <div class="p-2" style="margin-left: -200px;">
           <div>
@@ -15,7 +15,7 @@
         </div>
 
         <div class="p-2" style="margin-right: 500px;">
-            <a class="btn btn-primary" href="{% url 'ticker_insider_trades_url' ticker %}" role="button">Insiders</a>
+            <a class="btn btn-primary" href="{% url 'web:ticker_insider_trades_url' ticker %}" role="button">Insiders</a>
         </div>
 
       </div>

@@ -15,8 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from nasdaqstat.views import TickerList
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('nasdaqstat.urls'))
+    path('', TickerList.as_view(), name='web_ticker_list_url'),
+    path('api/', TickerList.as_view(), {'api': True}, name='ticker_list_url'),
+    path('<str:ticker>/', include(('nasdaqstat.urls', 'nasdaqstat'), namespace='web')),
+    path('api/<str:ticker>/', include(('nasdaqstat.urls', 'nasdaqstat'), namespace='api'), {'api': True}),
 ]

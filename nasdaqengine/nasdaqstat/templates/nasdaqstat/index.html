@@ -10,7 +10,7 @@
     <div class="col-2">
       <div class="list-group">
         {% for ticker in tickers %}
-          <a href="{{ ticker.get_absolute_url }}" class="list-group-item list-group-item-action">
+          <a href="{{ ticker }}" class="list-group-item list-group-item-action">
             {{ ticker }}
           </a>
         {% endfor %}
