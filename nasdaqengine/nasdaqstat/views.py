@@ -9,6 +9,8 @@ from django.db import connection
 
 from .models import *
 
+from django.core.paginator import Paginator
+
 
 class TickerList(View):
     def get(self, request, api=False):
@@ -26,12 +28,15 @@ class TickerHistorical(View):
         ticker_obj = get_object_or_404(Company, ticker__iexact=ticker)
         ticker_historical = Historical.objects.filter(ticker=ticker_obj)
 
+        context = {'ticker': ticker,
+                   'ticker_historical': ticker_historical,
+                   }
+
         if api:
             context_api = serializers.serialize('json', ticker_historical, indent=4)
             return HttpResponse(context_api, content_type='application/json')
 
-        return render(request, 'nasdaqstat/historical.html', context={'ticker': ticker,
-                                                                      'ticker_historical': ticker_historical})
+        return render(request, 'nasdaqstat/historical.html', context=context)
 
 
 class TickerInsiderTrades(View):
@@ -39,12 +44,36 @@ class TickerInsiderTrades(View):
         ticker_obj = Company.objects.get(ticker=ticker)
         ticker_insider_trades = InsiderTrades.objects.filter(ticker=ticker_obj)
 
+        rows_per_page = 15
+
+        paginator = Paginator(ticker_insider_trades, rows_per_page)
+        page_number = request.GET.get('page', 1)
+        page = paginator.get_page(page_number)
+        is_paginated = page.has_other_pages()
+
+        if page.has_previous():
+            prev_url = '?page={}'.format(page.previous_page_number())
+        else:
+            prev_url = ''
+
+        if page.has_next():
+            next_url = '?page={}'.format(page.next_page_number())
+        else:
+            next_url = ''
+
+        context = {'ticker': ticker,
+                   'ticker_insider_trades': ticker_insider_trades,
+                   'page_object': page,
+                   'is_paginated': is_paginated,
+                   'next_url': next_url,
+                   'prev_url': prev_url,
+                   }
+
         if api:
             context_api = serializers.serialize('json', ticker_insider_trades, indent=4)
             return HttpResponse(context_api, content_type='application/json')
 
-        return render(request, 'nasdaqstat/insider_trades.html', context={'ticker': ticker,
-                                                                          'ticker_insider_trades': ticker_insider_trades})
+        return render(request, 'nasdaqstat/insider_trades.html', context=context)
 
 
 class InsiderOperations(View):
