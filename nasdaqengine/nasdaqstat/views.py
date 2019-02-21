@@ -36,9 +36,7 @@ class TickerHistorical(View):
 
 class TickerInsiderTrades(View):
     def get(self, request, ticker, api=False):
-
         ticker_obj = Company.objects.get(ticker=ticker)
-
         ticker_insider_trades = InsiderTrades.objects.filter(ticker=ticker_obj)
 
         if api:
@@ -70,6 +68,7 @@ class InsiderOperations(View):
 class Analytics(View):
     def get(self, request, ticker, api=False):
         analytics_query = request.GET
+
         if analytics_query['date_from'] and analytics_query['date_to']:
             ticker_obj = Company.objects.get(ticker=ticker)
             date_from_obj = Historical.objects.filter(ticker=ticker_obj).get(date=analytics_query['date_from'])

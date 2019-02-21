@@ -1,20 +1,12 @@
-#!/usr/bin/env python
-import os
-import sys
 import time
-import django
 import requests
 
 from bs4 import BeautifulSoup
 from datetime import datetime
 from multiprocessing import Pool
-from nasdaqstat.models import *
 
-sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/')))
-sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), 'nasdaqengine/nasdaqengine/')))
+from .models import *
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-django.setup()
 
 def get_companies():
     with open('tickers.txt') as f:
@@ -180,12 +172,7 @@ def write_insider_data(insider_urls):
         )
 
 
-def make_all():
-
-    print('Enter the number of threads:')
-    num_threads = int(input())
-    print('\n')
-
+def make_all(num_threads):
     companies_list = get_companies()
     historical_urls = historical_url_generator(companies_list)
     insider_urls = insider_url_generator(companies_list)
@@ -196,9 +183,9 @@ def make_all():
 
 
 def time_logger(func):
-    def wrapper():
+    def wrapper(num_threads):
         start = datetime.now()
-        func()
+        func(num_threads)
         end = datetime.now()
         estimated_time = end - start
         print('Parsing is done in {}'.format(estimated_time))
@@ -206,8 +193,8 @@ def time_logger(func):
 
 
 @time_logger
-def main():
-    make_all()
+def scraper(num_threads):
+    make_all(num_threads)
 
     num_companies = Company.objects.count()
     num_insiders = Insider.objects.count()
@@ -217,8 +204,7 @@ def main():
     print('\n{} records were created in the table "Company"\n'
           '\n{} records were created in the table "Insider"\n'
           '\n{} records were created in the table "HIstorical"\n'
-          '\n{} records were created in the table "Insider Trades"\n'.format(
-                                                                             num_companies,
+          '\n{} records were created in the table "Insider Trades"\n'.format(num_companies,
                                                                              num_insiders,
                                                                              num_historicals,
                                                                              num_insidertrades
@@ -226,4 +212,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    scraper()
