@@ -1,7 +1,7 @@
 # nasdaq_app
 Web service that parses quotes of companies from https://www.nasdaq.com/
 
-**Before running the django application you must run the scraper to fill the database with a data from Nasdaq!**
+**Before running the django application you must run the scraper.py to fill the database with a data from Nasdaq!**
 
 # Functionality
 - grabs the data from:
